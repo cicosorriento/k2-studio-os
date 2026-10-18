@@ -1,0 +1,1620 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>K2 Plus 3D Parametric CAD & STL Studio</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- Three.js r128 & OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0b0f17;
+      color: #f1f5f9;
+      overflow-x: hidden;
+    }
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* Custom Range Slider Styling */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      background: #1e293b;
+      border-radius: 999px;
+      outline: none;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #38bdf8;
+      border: 2px solid #0f172a;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
+      transition: transform 0.12s ease, background-color 0.12s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+      background: #7dd3fc;
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-950 text-slate-100 select-none">
+
+  <!-- TOP NAVIGATION & PRESET BAR -->
+  <header class="border-b border-slate-800/80 bg-slate-900/90 backdrop-blur-md px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 z-20">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-500/20 font-bold text-white text-sm">
+        K2+
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="font-bold text-sm sm:text-base tracking-tight text-white">K2 Plus Parametric CAD &amp; STL Studio</h1>
+          <span class="hidden sm:inline-block text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 mono">
+            350×350×350mm Build Plate
+          </span>
+        </div>
+        <p class="text-xs text-slate-400">Watertight 1:1 mm Binary STL Generator for Creality Print 5.0+ &amp; Makr3D</p>
+      </div>
+    </div>
+
+    <!-- Quick-Start Presets -->
+    <div class="flex items-center gap-2 flex-wrap">
+      <span class="text-xs font-medium text-slate-400 hidden xl:inline">1-Click Presets:</span>
+      <button onclick="loadPreset('nordic_shade')" class="text-xs px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-amber-400"></span> Nordic Lamp Shade
+      </button>
+      <button onclick="loadPreset('helix_shade')" class="text-xs px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-sky-400"></span> Helix Twist Shade
+      </button>
+      <button onclick="loadPreset('puck_base')" class="text-xs px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-emerald-400"></span> 59mm LED Puck Base
+      </button>
+      <button onclick="loadPreset('desk_caddy')" class="text-xs px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-purple-400"></span> 4×3 Controller Caddy
+      </button>
+      <button onclick="loadPreset('monitor_tray')" class="text-xs px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-rose-400"></span> 8×2 Monitor Riser Tray
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN WORKSPACE GRID -->
+  <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
+
+    <!-- LEFT SIDEBAR: MODE SWITCHER & PARAMETRIC SLIDERS (4 columns on desktop) -->
+    <aside class="lg:col-span-4 xl:col-span-3 border-r border-slate-800/80 bg-slate-900/60 flex flex-col h-full max-h-[calc(100vh-58px)] overflow-y-auto">
+      
+      <!-- 3 Mode Selector Tabs -->
+      <div class="p-3 border-b border-slate-800 bg-slate-900/90 sticky top-0 z-10">
+        <div class="grid grid-cols-3 gap-1.5 p-1 bg-slate-950 rounded-xl border border-slate-800">
+          <button id="tab-shade" onclick="switchMode('shade')" class="py-2 px-2 rounded-lg text-xs font-semibold transition flex flex-col items-center gap-1 bg-sky-500/20 text-sky-300 border border-sky-500/40">
+            <span>1. Lamp Shade</span>
+            <span class="text-[10px] font-normal opacity-80">Diffuser Shell</span>
+          </button>
+          <button id="tab-base" onclick="switchMode('base')" class="py-2 px-2 rounded-lg text-xs font-semibold transition flex flex-col items-center gap-1 text-slate-400 hover:text-slate-200">
+            <span>2. 59mm Base</span>
+            <span class="text-[10px] font-normal opacity-80">LED Kit 001</span>
+          </button>
+          <button id="tab-organizer" onclick="switchMode('organizer')" class="py-2 px-2 rounded-lg text-xs font-semibold transition flex flex-col items-center gap-1 text-slate-400 hover:text-slate-200">
+            <span>3. Organizer</span>
+            <span class="text-[10px] font-normal opacity-80">Gridfinity / Desk</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- PARAMETER CONTROLS CONTAINER -->
+      <div class="p-4 space-y-5 flex-1">
+
+        <!-- ========================================== -->
+        <!-- MODE 1 CONTROLS: SCULPTURAL LAMP SHADE     -->
+        <!-- ========================================== -->
+        <div id="controls-shade" class="space-y-4">
+          <div class="flex items-center justify-between bg-sky-950/40 border border-sky-500/30 rounded-xl p-3">
+            <div>
+              <p class="text-xs font-semibold text-sky-300">Shade-to-Base Fit Sync</p>
+              <p class="text-[11px] text-slate-400">Inner bottom radius: <span id="lbl-shade-inner-rad" class="mono text-white font-semibold">63.0 mm</span></p>
+            </div>
+            <button onclick="syncBaseToShade()" class="px-2.5 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 font-semibold text-xs transition shadow">
+              Sync &amp; Edit Base →
+            </button>
+          </div>
+
+          <div class="space-y-3">
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-300 font-medium">Total Shade Height (Z)</span>
+                <span id="val-shadeHeight" class="mono text-sky-400 font-semibold">210 mm</span>
+              </div>
+              <input id="inp-shadeHeight" type="range" min="80" max="340" step="2" value="210" oninput="updateParam('shadeHeight', this.value)" />
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-300 font-medium">Bottom Radius</span>
+                  <span id="val-shadeBotRad" class="mono text-sky-400 font-semibold">65 mm</span>
+                </div>
+                <input id="inp-shadeBotRad" type="range" min="40" max="130" step="1" value="65" oninput="updateParam('shadeBotRad', this.value)" />
+              </div>
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-300 font-medium">Top Radius</span>
+                  <span id="val-shadeTopRad" class="mono text-sky-400 font-semibold">55 mm</span>
+                </div>
+                <input id="inp-shadeTopRad" type="range" min="30" max="130" step="1" value="55" oninput="updateParam('shadeTopRad', this.value)" />
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-300 font-medium">Mid-Section Curve / Bulge</span>
+                <span id="val-shadeBulge" class="mono text-sky-400 font-semibold">+20 mm</span>
+              </div>
+              <input id="inp-shadeBulge" type="range" min="-40" max="60" step="1" value="20" oninput="updateParam('shadeBulge', this.value)" />
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-300 font-medium">Shell Wall Thickness</span>
+                <span id="val-shadeWall" class="mono text-sky-400 font-semibold">2.0 mm</span>
+              </div>
+              <input id="inp-shadeWall" type="range" min="1.2" max="4.0" step="0.2" value="2.0" oninput="updateParam('shadeWall', this.value)" />
+            </div>
+
+            <hr class="border-slate-800" />
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-300 font-medium">Vertical Ribs</span>
+                  <span id="val-shadeRibs" class="mono text-sky-400 font-semibold">28</span>
+                </div>
+                <input id="inp-shadeRibs" type="range" min="0" max="60" step="1" value="28" oninput="updateParam('shadeRibs', this.value)" />
+              </div>
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-300 font-medium">Rib Depth</span>
+                  <span id="val-shadeRibDepth" class="mono text-sky-400 font-semibold">3.5 mm</span>
+                </div>
+                <input id="inp-shadeRibDepth" type="range" min="0" max="12" step="0.5" value="3.5" oninput="updateParam('shadeRibDepth', this.value)" />
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-300 font-medium">Spiral Twist Angle</span>
+                <span id="val-shadeTwist" class="mono text-sky-400 font-semibold">120°</span>
+              </div>
+              <input id="inp-shadeTwist" type="range" min="-360" max="360" step="5" value="120" oninput="updateParam('shadeTwist', this.value)" />
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-300 font-medium">Wave Frequency</span>
+                  <span id="val-shadeWaveFreq" class="mono text-sky-400 font-semibold">2</span>
+                </div>
+                <input id="inp-shadeWaveFreq" type="range" min="0" max="8" step="1" value="2" oninput="updateParam('shadeWaveFreq', this.value)" />
+              </div>
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-300 font-medium">Wave Amplitude</span>
+                  <span id="val-shadeWaveAmp" class="mono text-sky-400 font-semibold">3.0 mm</span>
+                </div>
+                <input id="inp-shadeWaveAmp" type="range" min="0" max="10" step="0.5" value="3.0" oninput="updateParam('shadeWaveAmp', this.value)" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- MODE 2 CONTROLS: 59MM LED PUCK BASE        -->
+        <!-- ========================================== -->
+        <div id="controls-base" class="space-y-4 hidden">
+          <div class="bg-emerald-950/40 border border-emerald-500/30 rounded-xl p-3 space-y-1">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-emerald-300">LED Lamp Kit 001 Standard</span>
+              <span class="text-[10px] mono bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded">59×8mm USB Puck</span>
+            </div>
+            <p class="text-[11px] text-slate-400 leading-relaxed">
+              Includes center puck recess, raised shade centering lip, and rear flat-exit USB cable routing slot.
+            </p>
+          </div>
+
+          <div class="space-y-3">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-300 font-medium">Base Outer Rad</span>
+                  <span id="val-baseOuterRad" class="mono text-emerald-400 font-semibold">68 mm</span>
+                </div>
+                <input id="inp-baseOuterRad" type="range" min="45" max="110" step="1" value="68" oninput="updateParam('baseOuterRad', this.value)" />
+              </div>
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-300 font-medium">Base Height</span>
+                  <span id="val-baseHeight" class="mono text-emerald-400 font-semibold">28 mm</span>
+                </div>
+                <input id="inp-baseHeight" type="range" min="18" max="50" step="1" value="28" oninput="updateParam('baseHeight', this.value)" />
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-300 font-medium">Shade Inner Fit Lip Radius</span>
+                <span id="val-baseShadeLipRad" class="mono text-emerald-400 font-semibold">62.6 mm</span>
+              </div>
+              <input id="inp-baseShadeLipRad" type="range" min="35" max="125" step="0.2" value="62.6" oninput="updateParam('baseShadeLipRad', this.value)" />
+              <p class="text-[10px] text-slate-400 mt-0.5">Set to (Shade Inner Radius - 0.4mm) for snug slip fit.</p>
+            </div>
+
+            <hr class="border-slate-800" />
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-300 font-medium">Puck Pocket Ø</span>
+                  <span id="val-basePuckDia" class="mono text-emerald-400 font-semibold">59.6 mm</span>
+                </div>
+                <input id="inp-basePuckDia" type="range" min="58.0" max="62.0" step="0.2" value="59.6" oninput="updateParam('basePuckDia', this.value)" />
+              </div>
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-300 font-medium">Pocket Depth</span>
+                  <span id="val-basePuckDepth" class="mono text-emerald-400 font-semibold">8.5 mm</span>
+                </div>
+                <input id="inp-basePuckDepth" type="range" min="5.0" max="15.0" step="0.5" value="8.5" oninput="updateParam('basePuckDepth', this.value)" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-300 font-medium">USB Slot Width</span>
+                  <span id="val-baseSlotWidth" class="mono text-emerald-400 font-semibold">6.0 mm</span>
+                </div>
+                <input id="inp-baseSlotWidth" type="range" min="0" max="12" step="0.5" value="6.0" oninput="updateParam('baseSlotWidth', this.value)" />
+              </div>
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-300 font-medium">Outer Flutes</span>
+                  <span id="val-baseFlutes" class="mono text-emerald-400 font-semibold">28</span>
+                </div>
+                <input id="inp-baseFlutes" type="range" min="0" max="48" step="1" value="28" oninput="updateParam('baseFlutes', this.value)" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- MODE 3 CONTROLS: DESK ORGANIZER & CADDY    -->
+        <!-- ========================================== -->
+        <div id="controls-organizer" class="space-y-4 hidden">
+          <div class="flex items-center justify-between bg-purple-950/40 border border-purple-500/30 rounded-xl p-3">
+            <div>
+              <p class="text-xs font-semibold text-purple-300">42mm Gridfinity Pitch Snap</p>
+              <p id="lbl-grid-units" class="text-[11px] text-slate-400 mono">Current: 4 × 3 Grid Units</p>
+            </div>
+            <button onclick="snapToGridfinity()" class="px-2.5 py-1.5 rounded-lg bg-purple-500 hover:bg-purple-400 text-slate-950 font-semibold text-xs transition shadow">
+              Snap 42mm Grid
+            </button>
+          </div>
+
+          <div class="space-y-3">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-300 font-medium">Width (X)</span>
+                  <span id="val-orgWidth" class="mono text-purple-400 font-semibold">168 mm</span>
+                </div>
+                <input id="inp-orgWidth" type="range" min="42" max="336" step="2" value="168" oninput="updateParam('orgWidth', this.value)" />
+              </div>
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-300 font-medium">Depth (Y)</span>
+                  <span id="val-orgDepth" class="mono text-purple-400 font-semibold">126 mm</span>
+                </div>
+                <input id="inp-orgDepth" type="range" min="42" max="336" step="2" value="126" oninput="updateParam('orgDepth', this.value)" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-300 font-medium">Height (Z)</span>
+                  <span id="val-orgHeight" class="mono text-purple-400 font-semibold">65 mm</span>
+                </div>
+                <input id="inp-orgHeight" type="range" min="20" max="160" step="1" value="65" oninput="updateParam('orgHeight', this.value)" />
+              </div>
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-300 font-medium">Wall Thickness</span>
+                  <span id="val-orgWall" class="mono text-purple-400 font-semibold">2.4 mm</span>
+                </div>
+                <input id="inp-orgWall" type="range" min="1.6" max="4.0" step="0.2" value="2.4" oninput="updateParam('orgWall', this.value)" />
+              </div>
+            </div>
+
+            <hr class="border-slate-800" />
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-300 font-medium">Columns (X)</span>
+                  <span id="val-orgCols" class="mono text-purple-400 font-semibold">3</span>
+                </div>
+                <input id="inp-orgCols" type="range" min="1" max="6" step="1" value="3" oninput="updateParam('orgCols', this.value)" />
+              </div>
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-slate-300 font-medium">Rows (Y)</span>
+                  <span id="val-orgRows" class="mono text-purple-400 font-semibold">2</span>
+                </div>
+                <input id="inp-orgRows" type="range" min="1" max="4" step="1" value="2" oninput="updateParam('orgRows', this.value)" />
+              </div>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-300 font-medium">Internal Divider Height</span>
+                <span id="val-orgDivHeight" class="mono text-purple-400 font-semibold">85%</span>
+              </div>
+              <input id="inp-orgDivHeight" type="range" min="30" max="100" step="5" value="85" oninput="updateParam('orgDivHeight', this.value)" />
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-300 font-medium">Front Finger / Cable Scoop</span>
+                <span id="val-orgScoop" class="mono text-purple-400 font-semibold">30%</span>
+              </div>
+              <input id="inp-orgScoop" type="range" min="0" max="60" step="5" value="30" oninput="updateParam('orgScoop', this.value)" />
+            </div>
+          </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- FILAMENT SWATCH & LIGHTING SIMULATION      -->
+        <!-- ========================================== -->
+        <div class="pt-3 border-t border-slate-800 space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-300">CFS Filament Material Swatch</span>
+            <span id="lbl-swatch-name" class="text-[11px] text-amber-300 font-medium">Matte Warm Ivory</span>
+          </div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <button onclick="setSwatch('ivory', '#f5ebd6', 'Matte Warm Ivory', 0.45, 0.05)" class="w-7 h-7 rounded-full border-2 border-white shadow-md" style="background:#f5ebd6" title="Matte Warm Ivory"></button>
+            <button onclick="setSwatch('white', '#f8fafc', 'Matte Pure White', 0.4, 0.05)" class="w-7 h-7 rounded-full border border-slate-600" style="background:#f8fafc" title="Matte Pure White"></button>
+            <button onclick="setSwatch('black', '#1e293b', 'Matte Charcoal Black', 0.5, 0.1)" class="w-7 h-7 rounded-full border border-slate-600" style="background:#1e293b" title="Matte Charcoal Black"></button>
+            <button onclick="setSwatch('gold', '#eab308', 'Silk Champagne Gold', 0.22, 0.65)" class="w-7 h-7 rounded-full border border-slate-600" style="background:linear-gradient(135deg,#fef08a,#ca8a04)" title="Silk Champagne Gold"></button>
+            <button onclick="setSwatch('red', '#dc2626', 'Crimson Red PLA', 0.35, 0.15)" class="w-7 h-7 rounded-full border border-slate-600" style="background:#dc2626" title="Crimson Red"></button>
+            <button onclick="setSwatch('green', '#15803d', 'Forest Green PLA', 0.4, 0.1)" class="w-7 h-7 rounded-full border border-slate-600" style="background:#15803d" title="Forest Green"></button>
+            <button onclick="setSwatch('clear', '#bae6fd', 'Translucent Diffuser PETG', 0.15, 0.1, true)" class="w-7 h-7 rounded-full border border-sky-400" style="background:rgba(186,230,253,0.5)" title="Translucent Clear"></button>
+          </div>
+
+          <!-- Warm 3000K LED Puck Simulation & Assembly Preview -->
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <button id="btn-led-sim" onclick="toggleLedGlow()" class="py-2 px-3 rounded-xl border border-amber-500/40 bg-amber-500/15 text-amber-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition hover:bg-amber-500/25">
+              <span id="dot-led" class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+              <span>3000K LED Glow: ON</span>
+            </button>
+            <button id="btn-assembly" onclick="toggleAssemblyPreview()" class="py-2 px-3 rounded-xl border border-slate-700 bg-slate-800/80 text-slate-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition hover:bg-slate-700">
+              <span>Show Both Parts: OFF</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- EXPORT BINARY STL FOOTER -->
+      <div class="p-4 border-t border-slate-800 bg-slate-900/95 sticky bottom-0 z-10 space-y-2">
+        <button onclick="exportBinarySTL()" class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-bold text-sm shadow-lg shadow-sky-500/25 transition flex items-center justify-center gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+          </svg>
+          <span id="btn-export-text">Download Lamp Shade .STL (1:1 mm)</span>
+        </button>
+        <div id="export-toast" class="hidden text-center py-1 px-2 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[11px] mono">
+          Watertight Z-Up Binary .STL saved! Drop straight into Creality Print 5.0+ or Makr3D.
+        </div>
+      </div>
+    </aside>
+
+    <!-- CENTER & RIGHT: 3D VIEWPORT + LIVE UK UNIT ECONOMICS PANEL (8 columns on desktop) -->
+    <main class="lg:col-span-8 xl:col-span-9 flex flex-col h-full max-h-[calc(100vh-58px)] overflow-y-auto lg:overflow-hidden">
+      
+      <!-- 3D CANVAS CONTAINER -->
+      <div class="relative flex-1 min-h-[380px] sm:min-h-[460px] bg-slate-950 overflow-hidden" id="viewport-container">
+        <canvas id="three-canvas" class="w-full h-full block"></canvas>
+
+        <!-- Top-Left Viewport Overlay: Active Model Badge & Bed Fit -->
+        <div class="absolute top-3 left-3 pointer-events-none flex flex-col gap-1.5">
+          <div class="bg-slate-900/85 backdrop-blur-md border border-slate-800 rounded-xl px-3 py-2 shadow-lg">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span id="vp-model-title" class="text-xs font-bold text-white">Sculptural Lamp Shade (Manifold Shell)</span>
+            </div>
+            <p id="vp-dimensions" class="text-[11px] mono text-sky-400 mt-0.5">Bounding Box: 156.0 × 156.0 × 210.0 mm</p>
+            <p id="vp-bed-usage" class="text-[10px] text-slate-400">Fits K2 Plus 350³mm Bed (44.6% X/Y width used)</p>
+          </div>
+        </div>
+
+        <!-- Top-Right Viewport Controls -->
+        <div class="absolute top-3 right-3 flex items-center gap-1.5 bg-slate-900/85 backdrop-blur-md border border-slate-800 rounded-xl p-1.5 shadow-lg">
+          <button id="btn-wireframe" onclick="toggleWireframe()" class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800 transition">
+            Wireframe
+          </button>
+          <button id="btn-spin" onclick="toggleAutoSpin()" class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-sky-500/20 text-sky-300 border border-sky-500/30 transition">
+            Auto-Spin
+          </button>
+          <button onclick="resetCameraView()" class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800 transition">
+            Reset View
+          </button>
+        </div>
+
+        <!-- Bottom-Left Hint -->
+        <div class="absolute bottom-3 left-3 pointer-events-none hidden sm:block">
+          <span class="text-[11px] bg-slate-900/75 text-slate-400 px-2.5 py-1 rounded-lg border border-slate-800">
+            Drag to Orbit • Scroll/Pinch to Zoom • Right-Click to Pan
+          </span>
+        </div>
+      </div>
+
+      <!-- BOTTOM BAR: LIVE UK UNIT ECONOMICS, SLICER ESTIMATOR & SWEF GRANT TRACKER -->
+      <section class="border-t border-slate-800 bg-slate-900/95 p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div class="flex items-center gap-2">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300">Live UK Etsy Unit Economics &amp; Slicer Estimator</h2>
+            <span class="text-[11px] px-2 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30 mono">
+              10x Pricing Rule Active
+            </span>
+          </div>
+
+          <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+            <input id="chk-include-puck" type="checkbox" checked onchange="recalculateEconomics()" class="rounded bg-slate-800 border-slate-700 text-sky-500 focus:ring-0" />
+            <span>Include £2.80 USB LED Puck (Kit 001) in Unit Cost</span>
+          </label>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
+          <!-- Card 1: Filament Weight & Print Time -->
+          <div class="bg-slate-950/90 border border-slate-800/90 rounded-xl p-3">
+            <p class="text-[11px] text-slate-400">Est. Filament &amp; Time</p>
+            <p id="econ-weight" class="text-base font-bold text-white mono mt-0.5">218 g</p>
+            <p id="econ-time" class="text-[11px] text-slate-400 mono">~3.9 hrs on K2 Plus</p>
+          </div>
+
+          <!-- Card 2: Raw Production Cost -->
+          <div class="bg-slate-950/90 border border-slate-800/90 rounded-xl p-3">
+            <p class="text-[11px] text-slate-400">Material + Power + LED</p>
+            <p id="econ-raw-cost" class="text-base font-bold text-amber-400 mono mt-0.5">£6.46</p>
+            <p id="econ-raw-breakdown" class="text-[10px] text-slate-400 mono">£3.27 PLA + £0.39 pwr + £2.80 LED</p>
+          </div>
+
+          <!-- Card 3: Recommended 10x Retail Price -->
+          <div class="bg-slate-950/90 border border-sky-500/30 rounded-xl p-3">
+            <p class="text-[11px] text-sky-300 font-medium">Recommended Etsy Price</p>
+            <p id="econ-retail" class="text-base font-bold text-sky-400 mono mt-0.5">£39.00</p>
+            <p class="text-[10px] text-slate-400">10× (Material + Power) + Hardware</p>
+          </div>
+
+          <!-- Card 4: Etsy Fees & Royal Mail Tracked 48 -->
+          <div class="bg-slate-950/90 border border-slate-800/90 rounded-xl p-3">
+            <p class="text-[11px] text-slate-400">Etsy Fee + RM Tracked 48</p>
+            <p id="econ-fees-post" class="text-base font-bold text-slate-200 mono mt-0.5">£8.04</p>
+            <p class="text-[10px] text-slate-400 mono">£4.29 Etsy + £3.75 Post/Box</p>
+          </div>
+
+          <!-- Card 5: Net Take-Home Profit Per Unit -->
+          <div class="bg-emerald-950/30 border border-emerald-500/40 rounded-xl p-3">
+            <p class="text-[11px] text-emerald-300 font-medium">Net Profit Per Sale</p>
+            <p id="econ-net-profit" class="text-base font-bold text-emerald-400 mono mt-0.5">£24.50</p>
+            <p id="econ-margin" class="text-[10px] text-emerald-300/80 mono">62.8% Net Margin</p>
+          </div>
+
+          <!-- Card 6: Bristol SWEF £2,000 Grant Trigger -->
+          <div class="bg-indigo-950/30 border border-indigo-500/40 rounded-xl p-3">
+            <p class="text-[11px] text-indigo-300 font-medium">£2,000 SWEF Grant Target</p>
+            <p id="econ-swef-units" class="text-base font-bold text-indigo-300 mono mt-0.5">13 Sales / mo</p>
+            <p class="text-[10px] text-slate-400">Hits £500/mo gross turnover</p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ================================================================= -->
+  <!-- JAVASCRIPT: PARAMETRIC GEOMETRY ENGINE, THREE.JS & STL EXPORTER   -->
+  <!-- ================================================================= -->
+  <script>
+    // --- APPLICATION STATE ---
+    const state = {
+      mode: 'shade', // 'shade' | 'base' | 'organizer'
+      showBothLampParts: false,
+      ledGlowOn: true,
+      wireframe: false,
+      autoSpin: true,
+      swatch: {
+        id: 'ivory',
+        color: '#f5ebd6',
+        name: 'Matte Warm Ivory',
+        roughness: 0.45,
+        metalness: 0.05,
+        translucent: false
+      },
+      // Mode 1: Sculptural Lamp Shade Parameters (in mm)
+      shadeHeight: 210,
+      shadeBotRad: 65,
+      shadeTopRad: 55,
+      shadeBulge: 20,
+      shadeWall: 2.0,
+      shadeRibs: 28,
+      shadeRibDepth: 3.5,
+      shadeTwist: 120,
+      shadeWaveFreq: 2,
+      shadeWaveAmp: 3.0,
+
+      // Mode 2: 59mm LED Puck Base Parameters (in mm)
+      baseOuterRad: 68,
+      baseHeight: 28,
+      baseShadeLipRad: 62.6, // Matches (65 - 2.0) - 0.4mm clearance
+      basePuckDia: 59.6,     // 59mm LED Lamp Kit 001 + 0.6mm clearance
+      basePuckDepth: 8.5,
+      baseSlotWidth: 6.0,
+      baseFlutes: 28,
+
+      // Mode 3: Desk Organizer & Gridfinity Caddy Parameters (in mm)
+      orgWidth: 168,
+      orgDepth: 126,
+      orgHeight: 65,
+      orgWall: 2.4,
+      orgCols: 3,
+      orgRows: 2,
+      orgDivHeight: 85,
+      orgScoop: 30
+    };
+
+    // --- THREE.JS SCENE GLOBALS ---
+    let scene, camera, renderer, controls;
+    let mainMesh = null;
+    let secondaryMesh = null;
+    let wireframeMesh = null;
+    let internalPointLight = null;
+    let ledPuckVisualMesh = null;
+    let activeGeometry = null; // Stores current model geometry in Three.js Y-up coords
+
+    // --- INITIALIZE THREE.JS WORKSPACE ---
+    function initThree() {
+      const container = document.getElementById('viewport-container');
+      const canvas = document.getElementById('three-canvas');
+
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x090d16);
+
+      camera = new THREE.PerspectiveCamera(42, container.clientWidth / container.clientHeight, 1, 2500);
+      camera.position.set(270, 230, 310);
+
+      renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.target.set(0, 85, 0);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.06;
+      controls.maxPolarAngle = Math.PI / 2 + 0.15; // Allow looking slightly underneath
+      controls.minDistance = 60;
+      controls.maxDistance = 900;
+
+      // Ambient & Studio Directional Lighting
+      const hemiLight = new THREE.HemisphereLight(0xdbeafe, 0x1e293b, 0.65);
+      scene.add(hemiLight);
+
+      const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.75);
+      dirLight1.position.set(220, 380, 260);
+      dirLight1.castShadow = true;
+      scene.add(dirLight1);
+
+      const dirLight2 = new THREE.DirectionalLight(0x93c5fd, 0.35);
+      dirLight2.position.set(-250, 180, -220);
+      scene.add(dirLight2);
+
+      // Warm 3000K Internal LED Lamp Light (for Lamp modes)
+      internalPointLight = new THREE.PointLight(0xffa94d, 1.8, 380, 1.5);
+      internalPointLight.position.set(0, 75, 0);
+      scene.add(internalPointLight);
+
+      // Build Creality K2 Plus 350x350mm Build Plate
+      createK2PlusBuildPlate();
+
+      // Build Initial Parametric Model
+      rebuildModel();
+
+      // Responsive Resize Listener
+      window.addEventListener('resize', onWindowResize);
+
+      // Start Animation Loop
+      animate();
+    }
+
+    // --- CREATE CREALITY K2 PLUS 350x350mm PEI BUILD PLATE ---
+    function createK2PlusBuildPlate() {
+      const bedSize = 350;
+      const bedGroup = new THREE.Group();
+
+      // Textured Dark PEI Plate Base
+      const plateGeo = new THREE.BoxGeometry(bedSize, 3, bedSize);
+      const plateMat = new THREE.MeshStandardMaterial({
+        color: 0x161f30,
+        roughness: 0.6,
+        metalness: 0.35
+      });
+      const plateMesh = new THREE.Mesh(plateGeo, plateMat);
+      plateMesh.position.y = -1.5;
+      plateMesh.receiveShadow = true;
+      bedGroup.add(plateMesh);
+
+      // 10mm Fine Grid & 50mm Major Grid
+      const fineGrid = new THREE.GridHelper(bedSize, 35, 0x38bdf8, 0x1e293b);
+      fineGrid.position.y = 0.1;
+      bedGroup.add(fineGrid);
+
+      const majorGrid = new THREE.GridHelper(bedSize, 7, 0x0284c7, 0x334155);
+      majorGrid.position.y = 0.2;
+      bedGroup.add(majorGrid);
+
+      // Outer 350x350mm Build Volume Wireframe Cage (350mm Z height preview)
+      const volumeGeo = new THREE.BoxGeometry(bedSize, bedSize, bedSize);
+      const volumeEdges = new THREE.EdgesGeometry(volumeGeo);
+      const volumeLine = new THREE.LineSegments(
+        volumeEdges,
+        new THREE.LineBasicMaterial({ color: 0x1e3a5f, transparent: true, opacity: 0.35 })
+      );
+      volumeLine.position.y = bedSize / 2;
+      bedGroup.add(volumeLine);
+
+      // Front PEI Lip Tab Indicator
+      const tabGeo = new THREE.BoxGeometry(90, 3, 12);
+      const tabMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.4 });
+      const tabMesh = new THREE.Mesh(tabGeo, tabMat);
+      tabMesh.position.set(0, -1.5, bedSize / 2 + 6);
+      bedGroup.add(tabMesh);
+
+      scene.add(bedGroup);
+    }
+
+    // =========================================================================
+    // WATERTIGHT PARAMETRIC GEOMETRY BUILDERS
+    // Note: Inside Three.js viewport: X = Right, Y = Up (Height), Z = Front.
+    // On STL Export: We map (X, -Z, Y) so Z is Up and 1 unit = 1.0 mm!
+    // =========================================================================
+
+    // Helper: Push two triangles for a quad (v0, v1, v2, v3) in counter-clockwise order
+    function pushQuad(positions, v0, v1, v2, v3) {
+      // Triangle 1: v0 -> v1 -> v2
+      positions.push(v0[0], v0[1], v0[2], v1[0], v1[1], v1[2], v2[0], v2[1], v2[2]);
+      // Triangle 2: v0 -> v2 -> v3
+      positions.push(v0[0], v0[1], v0[2], v2[0], v2[1], v2[2], v3[0], v3[1], v3[2]);
+    }
+
+    // --- BUILDER 1: SCULPTURAL LAMP SHADE (Manifold Hollow Tubular Vase Shell) ---
+    function buildLampShadeGeometry() {
+      const H = state.shadeHeight;
+      const rBot = state.shadeBotRad;
+      const rTop = state.shadeTopRad;
+      const bulge = state.shadeBulge;
+      const wall = state.shadeWall;
+      const ribs = Math.round(state.shadeRibs);
+      const ribDepth = state.shadeRibDepth;
+      const twistRad = (state.shadeTwist * Math.PI) / 180;
+      const waveFreq = state.shadeWaveFreq;
+      const waveAmp = state.shadeWaveAmp;
+
+      const segAngle = 180; // High angular resolution for smooth ribs
+      const segHeight = 90; // Vertical slices
+
+      const outerRings = [];
+      const innerRings = [];
+
+      for (let iy = 0; iy <= segHeight; iy++) {
+        const u = iy / segHeight; // 0 at bottom, 1 at top
+        const y = u * H;
+
+        // Smooth base radius interpolation + sine bulge + vertical wave ripple
+        const baseRad = rBot * (1 - u) + rTop * u + bulge * Math.sin(Math.PI * u);
+        // Taper ripple & ribs slightly near the very bottom 10mm so the bottom ring stays circular for the base lip
+        const bottomBlend = Math.min(1, y / 14);
+        const waveOffset = waveAmp * Math.sin(u * waveFreq * Math.PI * 2) * bottomBlend;
+
+        const outRing = [];
+        const inRing = [];
+
+        for (let ia = 0; ia < segAngle; ia++) {
+          const theta = (ia / segAngle) * Math.PI * 2;
+          const twistedTheta = theta + u * twistRad;
+
+          // Rib modulation
+          const ribMod = ribs > 0
+            ? ribDepth * 0.5 * (1 + Math.sin(ribs * twistedTheta)) * bottomBlend
+            : 0;
+
+          const rOuter = Math.max(12, baseRad + waveOffset + ribMod);
+          // Inner wall tracks outer contour minus wall thickness, keeping bottom seating ring clean
+          const rInner = Math.max(8, rOuter - wall);
+
+          const cosT = Math.cos(theta);
+          const sinT = Math.sin(theta);
+
+          outRing.push([rOuter * cosT, y, rOuter * sinT]);
+          inRing.push([rInner * cosT, y, rInner * sinT]);
+        }
+
+        outerRings.push(outRing);
+        innerRings.push(inRing);
+      }
+
+      const positions = [];
+
+      // 1. Outer & Inner Vertical Walls
+      for (let iy = 0; iy < segHeight; iy++) {
+        const outCurr = outerRings[iy];
+        const outNext = outerRings[iy + 1];
+        const inCurr = innerRings[iy];
+        const inNext = innerRings[iy + 1];
+
+        for (let ia = 0; ia < segAngle; ia++) {
+          const nextA = (ia + 1) % segAngle;
+
+          // Outer surface (normals point outward)
+          pushQuad(positions, outCurr[nextA], outCurr[ia], outNext[ia], outNext[nextA]);
+
+          // Inner surface (normals point inward)
+          pushQuad(positions, inCurr[ia], inCurr[nextA], inNext[nextA], inNext[ia]);
+        }
+      }
+
+      // 2. Bottom Annular Ring (y = 0) & Top Annular Ring (y = H) to close the hollow shell
+      const botOut = outerRings[0];
+      const botIn = innerRings[0];
+      const topOut = outerRings[segHeight];
+      const topIn = innerRings[segHeight];
+
+      for (let ia = 0; ia < segAngle; ia++) {
+        const nextA = (ia + 1) % segAngle;
+        // Bottom cap (normals point -Y down)
+        pushQuad(positions, botOut[ia], botOut[nextA], botIn[nextA], botIn[ia]);
+        // Top cap (normals point +Y up)
+        pushQuad(positions, topOut[nextA], topOut[ia], topIn[ia], topIn[nextA]);
+      }
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geo.computeVertexNormals();
+      return geo;
+    }
+
+    // --- BUILDER 2: 59MM LED PUCK BASE (With Puck Pocket, Shade Alignment Lip & Rear USB Slot) ---
+    function buildLampBaseGeometry() {
+      const rOuterBase = state.baseOuterRad;
+      const H = state.baseHeight;
+      const rLip = Math.min(rOuterBase - 2.5, Math.max(state.basePuckDia / 2 + 2.0, state.baseShadeLipRad));
+      const rPuck = state.basePuckDia / 2;
+      const puckDepth = Math.min(H - 3.0, state.basePuckDepth);
+      const slotW = state.baseSlotWidth;
+      const flutes = Math.round(state.baseFlutes);
+
+      const lipDrop = 6.0; // Outer shelf drops 6mm below top of alignment lip so shade rests on shelf
+      const yTopLip = H;
+      const yShelf = Math.max(4.0, H - lipDrop);
+      const yPuckFloor = Math.max(3.0, H - puckDepth);
+      const ySlotFloor = Math.min(yPuckFloor, yShelf - 5.0);
+
+      // Structured Polar Grid: Radial rings from center (r=0) to rOuter(theta)
+      // Using dense angular steps so the rear USB cable channel walls are crisp and 100% watertight
+      const segAngle = 240;
+      const positions = [];
+
+      // Helper to compute outer fluted radius at angle theta
+      function getOuterRadius(theta) {
+        if (flutes <= 0) return rOuterBase;
+        return rOuterBase + 1.2 * Math.sin(flutes * theta);
+      }
+
+      // Helper to compute top height Y at (r, theta)
+      function getTopHeight(r, theta) {
+        const x = r * Math.cos(theta);
+        const z = r * Math.sin(theta); // Rear of base is -Z
+        const inRearCableSlot = slotW > 0 && z < 0 && Math.abs(x) <= slotW / 2 && r >= rPuck * 0.85;
+
+        if (r <= rPuck) {
+          return yPuckFloor;
+        }
+        if (inRearCableSlot) {
+          return Math.max(2.5, ySlotFloor);
+        }
+        if (r <= rLip) {
+          return yTopLip;
+        }
+        return yShelf;
+      }
+
+      // Radial sample fractions from 0 to 1
+      const radialSteps = [
+        0.02,
+        rPuck / rOuterBase - 0.004,
+        rPuck / rOuterBase + 0.004,
+        (rPuck + rLip) / (2 * rOuterBase),
+        rLip / rOuterBase - 0.004,
+        rLip / rOuterBase + 0.004,
+        (rLip + rOuterBase) / (2 * rOuterBase),
+        1.0
+      ].sort((a, b) => a - b);
+
+      // Build Top & Bottom Center Fan (from r=0 to first radial ring)
+      const r0 = radialSteps[0] * rOuterBase;
+      for (let ia = 0; ia < segAngle; ia++) {
+        const nextA = (ia + 1) % segAngle;
+        const t1 = (ia / segAngle) * Math.PI * 2;
+        const t2 = (nextA / segAngle) * Math.PI * 2;
+
+        // Top center triangle fan
+        positions.push(
+          0, yPuckFloor, 0,
+          r0 * Math.cos(t2), yPuckFloor, r0 * Math.sin(t2),
+          r0 * Math.cos(t1), yPuckFloor, r0 * Math.sin(t1)
+        );
+        // Bottom center triangle fan (y = 0)
+        positions.push(
+          0, 0, 0,
+          r0 * Math.cos(t1), 0, r0 * Math.sin(t1),
+          r0 * Math.cos(t2), 0, r0 * Math.sin(t2)
+        );
+      }
+
+      // Build Structured Polar Rings from radialSteps[0] to radialSteps[last]
+      const ringCount = radialSteps.length;
+      const topGrid = [];
+      const botGrid = [];
+
+      for (let ir = 0; ir < ringCount; ir++) {
+        const frac = radialSteps[ir];
+        const tRing = [];
+        const bRing = [];
+        for (let ia = 0; ia < segAngle; ia++) {
+          const theta = (ia / segAngle) * Math.PI * 2;
+          const rMax = getOuterRadius(theta);
+          // Only flute the outermost ring
+          const r = ir === ringCount - 1 ? rMax : frac * rOuterBase;
+          const yTop = getTopHeight(r, theta);
+          const x = r * Math.cos(theta);
+          const z = r * Math.sin(theta);
+          tRing.push([x, yTop, z]);
+          bRing.push([x, 0, z]);
+        }
+        topGrid.push(tRing);
+        botGrid.push(bRing);
+      }
+
+      // Connect Top Rings & Bottom Rings
+      for (let ir = 0; ir < ringCount - 1; ir++) {
+        const tCurr = topGrid[ir];
+        const tNext = topGrid[ir + 1];
+        const bCurr = botGrid[ir];
+        const bNext = botGrid[ir + 1];
+
+        for (let ia = 0; ia < segAngle; ia++) {
+          const nextA = (ia + 1) % segAngle;
+          // Top surface quad
+          pushQuad(positions, tCurr[ia], tCurr[nextA], tNext[nextA], tNext[ia]);
+          // Bottom surface quad
+          pushQuad(positions, bCurr[nextA], bCurr[ia], bNext[ia], bNext[nextA]);
+        }
+      }
+
+      // Connect Outer Vertical Perimeter Wall
+      const outerTop = topGrid[ringCount - 1];
+      const outerBot = botGrid[ringCount - 1];
+      for (let ia = 0; ia < segAngle; ia++) {
+        const nextA = (ia + 1) % segAngle;
+        pushQuad(positions, outerBot[nextA], outerBot[ia], outerTop[ia], outerTop[nextA]);
+      }
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geo.computeVertexNormals();
+      return geo;
+    }
+
+    // --- BUILDER 3: PARAMETRIC DESK ORGANIZER & GRIDFINITY CADDY (Watertight Cell-Extrusion) ---
+    function buildOrganizerGeometry() {
+      const W = state.orgWidth;
+      const D = state.orgDepth;
+      const H = state.orgHeight;
+      const wall = state.orgWall;
+      const cols = Math.round(state.orgCols);
+      const rows = Math.round(state.orgRows);
+      const divH = wall + (H - wall) * (state.orgDivHeight / 100);
+      const scoopPct = state.orgScoop / 100;
+
+      // Build X and Z grid intervals so outer walls, internal dividers, and smooth front finger scoops are exact
+      const xCoords = [-W / 2, -W / 2 + wall];
+      const innerW = W - 2 * wall - (cols - 1) * wall;
+      const cellW = innerW / cols;
+
+      const subStepsX = 14; // Subdivide each compartment along X for smooth curved front finger scoops
+      for (let c = 0; c < cols; c++) {
+        const xStart = -W / 2 + wall + c * (cellW + wall);
+        for (let s = 1; s <= subStepsX; s++) {
+          xCoords.push(xStart + (s / subStepsX) * cellW);
+        }
+        if (c < cols - 1) {
+          xCoords.push(xStart + cellW + wall);
+        }
+      }
+      xCoords.push(W / 2);
+
+      const zCoords = [-D / 2, -D / 2 + wall];
+      const innerD = D - 2 * wall - (rows - 1) * wall;
+      const cellD = innerD / rows;
+      for (let r = 0; r < rows; r++) {
+        const zStart = -D / 2 + wall + r * (cellD + wall);
+        zCoords.push(zStart + cellD);
+        if (r < rows - 1) {
+          zCoords.push(zStart + cellD + wall);
+        }
+      }
+      zCoords.push(D / 2);
+
+      const nx = xCoords.length - 1;
+      const nz = zCoords.length - 1;
+
+      // Compute top height Y for each cell (ix, iz)
+      const cellHeights = [];
+      for (let ix = 0; ix < nx; ix++) {
+        const colArr = [];
+        const xMid = 0.5 * (xCoords[ix] + xCoords[ix + 1]);
+
+        // Determine if xMid is on an outer X wall, an internal X divider, or inside a compartment column
+        let isOuterX = (ix === 0 || ix === nx - 1);
+        let isInternalDivX = false;
+        let localCompX = 0; // -1 to +1 inside compartment for scoop curve
+
+        if (!isOuterX) {
+          for (let c = 0; c < cols; c++) {
+            const xStart = -W / 2 + wall + c * (cellW + wall);
+            const xEnd = xStart + cellW;
+            if (xMid >= xStart - 1e-4 && xMid <= xEnd + 1e-4) {
+              localCompX = ((xMid - xStart) / cellW) * 2 - 1;
+              break;
+            } else if (c < cols - 1 && xMid > xEnd && xMid < xEnd + wall) {
+              isInternalDivX = true;
+              break;
+            }
+          }
+        }
+
+        for (let iz = 0; iz < nz; iz++) {
+          const isBackWall = (iz === 0);
+          const isFrontWall = (iz === nz - 1);
+          const isInternalDivZ = (!isBackWall && !isFrontWall && (iz % 2 === 0));
+
+          let h = wall; // Default compartment floor height
+
+          if (isOuterX || isBackWall) {
+            h = H;
+          } else if (isFrontWall) {
+            if (isInternalDivX) {
+              h = H;
+            } else if (scoopPct > 0 && Math.abs(localCompX) < 0.72) {
+              // Smooth cosine scoop cutout on front wall of each compartment
+              const norm = localCompX / 0.72;
+              const drop = (H - wall) * scoopPct * 0.5 * (1 + Math.cos(Math.PI * norm));
+              h = Math.max(wall + 4, H - drop);
+            } else {
+              h = H;
+            }
+          } else if (isInternalDivX || isInternalDivZ) {
+            h = divH;
+          } else {
+            h = wall; // Compartment floor
+          }
+
+          colArr.push(h);
+        }
+        cellHeights.push(colArr);
+      }
+
+      const positions = [];
+
+      // Emit Top, Bottom, and All Vertical Step Faces for 100% Watertight Mesh
+      for (let ix = 0; ix < nx; ix++) {
+        const x0 = xCoords[ix];
+        const x1 = xCoords[ix + 1];
+
+        for (let iz = 0; iz < nz; iz++) {
+          const z0 = zCoords[iz];
+          const z1 = zCoords[iz + 1];
+          const y = cellHeights[ix][iz];
+
+          // Top Face (+Y normal)
+          pushQuad(positions, [x0, y, z1], [x1, y, z1], [x1, y, z0], [x0, y, z0]);
+
+          // Bottom Face (-Y normal at y=0)
+          pushQuad(positions, [x0, 0, z0], [x1, 0, z0], [x1, 0, z1], [x0, 0, z1]);
+
+          // Left Vertical Wall (-X)
+          const yLeft = ix > 0 ? cellHeights[ix - 1][iz] : 0;
+          if (y > yLeft) {
+            pushQuad(positions, [x0, yLeft, z0], [x0, yLeft, z1], [x0, y, z1], [x0, y, z0]);
+          }
+
+          // Right Vertical Wall (+X)
+          const yRight = ix < nx - 1 ? cellHeights[ix + 1][iz] : 0;
+          if (y > yRight) {
+            pushQuad(positions, [x1, yRight, z1], [x1, yRight, z0], [x1, y, z0], [x1, y, z1]);
+          }
+
+          // Back Vertical Wall (-Z)
+          const yBack = iz > 0 ? cellHeights[ix][iz - 1] : 0;
+          if (y > yBack) {
+            pushQuad(positions, [x1, yBack, z0], [x0, yBack, z0], [x0, y, z0], [x1, y, z0]);
+          }
+
+          // Front Vertical Wall (+Z)
+          const yFront = iz < nz - 1 ? cellHeights[ix][iz + 1] : 0;
+          if (y > yFront) {
+            pushQuad(positions, [x0, yFront, z1], [x1, yFront, z1], [x1, y, z1], [x0, y, z1]);
+          }
+        }
+      }
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geo.computeVertexNormals();
+      return geo;
+    }
+
+    // --- CREATE MATERIAL FOR CURRENT SWATCH & LED GLOW STATE ---
+    function createActiveMaterial(isShadePart) {
+      const isLampMode = (state.mode === 'shade' || state.mode === 'base');
+      const glowActive = state.ledGlowOn && isLampMode && isShadePart;
+
+      return new THREE.MeshStandardMaterial({
+        color: new THREE.Color(state.swatch.color),
+        roughness: state.swatch.roughness,
+        metalness: state.swatch.metalness,
+        emissive: glowActive ? new THREE.Color(0xff922b) : new THREE.Color(0x000000),
+        emissiveIntensity: glowActive ? (state.swatch.id === 'black' ? 0.08 : 0.32) : 0,
+        transparent: state.swatch.translucent,
+        opacity: state.swatch.translucent ? 0.78 : 1.0,
+        side: THREE.DoubleSide
+      });
+    }
+
+    // --- REBUILD ACTIVE 3D MODEL & UPDATE UI ---
+    function rebuildModel() {
+      // Remove previous meshes
+      if (mainMesh) {
+        scene.remove(mainMesh);
+        mainMesh.geometry.dispose();
+      }
+      if (secondaryMesh) {
+        scene.remove(secondaryMesh);
+        secondaryMesh.geometry.dispose();
+        secondaryMesh = null;
+      }
+      if (wireframeMesh) {
+        scene.remove(wireframeMesh);
+        wireframeMesh.geometry.dispose();
+        wireframeMesh = null;
+      }
+      if (ledPuckVisualMesh) {
+        scene.remove(ledPuckVisualMesh);
+        ledPuckVisualMesh.geometry.dispose();
+        ledPuckVisualMesh = null;
+      }
+
+      // Build primary geometry for active mode
+      if (state.mode === 'shade') {
+        activeGeometry = buildLampShadeGeometry();
+      } else if (state.mode === 'base') {
+        activeGeometry = buildLampBaseGeometry();
+      } else {
+        activeGeometry = buildOrganizerGeometry();
+      }
+
+      const mat = createActiveMaterial(state.mode === 'shade');
+      mainMesh = new THREE.Mesh(activeGeometry, mat);
+      mainMesh.castShadow = true;
+      mainMesh.receiveShadow = true;
+
+      // If showing both lamp parts assembled, position shade on top of the base shelf
+      if (state.showBothLampParts && (state.mode === 'shade' || state.mode === 'base')) {
+        const shelfHeight = Math.max(4.0, state.baseHeight - 6.0);
+        if (state.mode === 'shade') {
+          mainMesh.position.y = shelfHeight;
+          const baseGeo = buildLampBaseGeometry();
+          const baseMat = new THREE.MeshStandardMaterial({
+            color: 0x1e293b,
+            roughness: 0.5,
+            metalness: 0.15
+          });
+          secondaryMesh = new THREE.Mesh(baseGeo, baseMat);
+          secondaryMesh.castShadow = true;
+          scene.add(secondaryMesh);
+        } else {
+          const shadeGeo = buildLampShadeGeometry();
+          const shadeMat = createActiveMaterial(true);
+          secondaryMesh = new THREE.Mesh(shadeGeo, shadeMat);
+          secondaryMesh.position.y = shelfHeight;
+          secondaryMesh.castShadow = true;
+          scene.add(secondaryMesh);
+        }
+      }
+
+      scene.add(mainMesh);
+
+      // Add visual 59mm LED Puck inside Base when in Base or Assembled mode
+      if (state.mode === 'base' || (state.mode === 'shade' && state.showBothLampParts)) {
+        const puckGeo = new THREE.CylinderGeometry(29.5, 29.5, 8, 48);
+        const puckMat = new THREE.MeshStandardMaterial({
+          color: 0xf8fafc,
+          emissive: state.ledGlowOn ? 0xffb74d : 0x000000,
+          emissiveIntensity: state.ledGlowOn ? 0.9 : 0,
+          roughness: 0.2
+        });
+        ledPuckVisualMesh = new THREE.Mesh(puckGeo, puckMat);
+        const yPuckFloor = Math.max(3.0, state.baseHeight - state.basePuckDepth);
+        ledPuckVisualMesh.position.y = yPuckFloor + 4;
+        scene.add(ledPuckVisualMesh);
+      }
+
+      // Wireframe Overlay if enabled
+      if (state.wireframe) {
+        const wireGeo = new THREE.WireframeGeometry(activeGeometry);
+        wireframeMesh = new THREE.LineSegments(
+          wireGeo,
+          new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.35 })
+        );
+        wireframeMesh.position.copy(mainMesh.position);
+        scene.add(wireframeMesh);
+      }
+
+      // Update Internal 3000K PointLight
+      const isLampMode = (state.mode === 'shade' || state.mode === 'base');
+      internalPointLight.intensity = (isLampMode && state.ledGlowOn) ? 2.1 : 0;
+      internalPointLight.position.set(0, state.mode === 'shade' ? state.shadeHeight * 0.45 : 45, 0);
+
+      // Update Shade Inner Bottom Radius Label
+      const shadeInnerBot = (state.shadeBotRad - state.shadeWall).toFixed(1);
+      document.getElementById('lbl-shade-inner-rad').textContent = `${shadeInnerBot} mm`;
+
+      // Update Gridfinity Units Label
+      const gx = (state.orgWidth / 42).toFixed(1).replace('.0', '');
+      const gy = (state.orgDepth / 42).toFixed(1).replace('.0', '');
+      document.getElementById('lbl-grid-units').textContent = `Current: ${gx} × ${gy} Grid Units (${state.orgWidth}×${state.orgDepth}mm)`;
+
+      // Update Viewport Header & Economics
+      recalculateEconomics();
+    }
+
+    // --- EXACT MESH VOLUME & UK UNIT ECONOMICS CALCULATOR ---
+    function computeGeometryVolumeCm3(geometry) {
+      const pos = geometry.attributes.position.array;
+      let totalVolMm3 = 0;
+      for (let i = 0; i < pos.length; i += 9) {
+        const x1 = pos[i],     y1 = pos[i + 1], z1 = pos[i + 2];
+        const x2 = pos[i + 3], y2 = pos[i + 4], z2 = pos[i + 5];
+        const x3 = pos[i + 6], y3 = pos[i + 7], z3 = pos[i + 8];
+        // Signed volume of tetrahedron with origin
+        totalVolMm3 += (x1 * (y2 * z3 - y3 * z2) - y1 * (x2 * z3 - x3 * z2) + z1 * (x2 * y3 - x3 * y2)) / 6.0;
+      }
+      return Math.abs(totalVolMm3) / 1000.0; // 1 cm³ = 1000 mm³
+    }
+
+    function recalculateEconomics() {
+      if (!activeGeometry) return;
+      activeGeometry.computeBoundingBox();
+      const bb = activeGeometry.boundingBox;
+      const sizeX = (bb.max.x - bb.min.x);
+      const sizeZ = (bb.max.z - bb.min.z);
+      const sizeY = (bb.max.y - bb.min.y); // Height in Three.js
+
+      // Update Viewport Badges
+      const titles = {
+        shade: 'Sculptural Lamp Shade (Watertight Shell)',
+        base: '59mm LED Lamp Base (Kit 001 + Cable Slot)',
+        organizer: 'Parametric Multi-Compartment Desk Caddy'
+      };
+      const exportLabels = {
+        shade: 'Download Lamp Shade .STL (1:1 mm)',
+        base: 'Download 59mm LED Base .STL (1:1 mm)',
+        organizer: 'Download Desk Organizer .STL (1:1 mm)'
+      };
+      document.getElementById('vp-model-title').textContent = titles[state.mode];
+      document.getElementById('btn-export-text').textContent = exportLabels[state.mode];
+      document.getElementById('vp-dimensions').textContent =
+        `Bounding Box: ${sizeX.toFixed(1)} × ${sizeZ.toFixed(1)} × ${sizeY.toFixed(1)} mm`;
+
+      const maxXY = Math.max(sizeX, sizeZ);
+      const bedPct = ((maxXY / 350) * 100).toFixed(1);
+      document.getElementById('vp-bed-usage').textContent =
+        `Fits K2 Plus 350³mm Bed (${bedPct}% X/Y bed span used)`;
+
+      // Compute true solid volume & apply realistic slicer wall/infill density factor
+      const solidVolCm3 = computeGeometryVolumeCm3(activeGeometry);
+      // Thin lamp walls print nearly solid (factor ~0.82); thick bases/organizers use 15% gyroid infill + perimeters (factor ~0.48)
+      const slicerFactor = state.mode === 'shade' ? 0.82 : 0.52;
+      const weightGrams = Math.max(12, Math.round(solidVolCm3 * 1.24 * slicerFactor));
+
+      // K2 Plus high-speed print time estimate (~55g/hr average with accelerations)
+      const printHours = Math.max(0.4, weightGrams / 55);
+
+      // Costs in GBP (£15/kg spool + 5% purge buffer, £0.10/hr power, optional £2.80 LED puck)
+      const plaCost = (weightGrams / 1000) * 15.0 * 1.05;
+      const powerCost = printHours * 0.10;
+      const includePuck = document.getElementById('chk-include-puck').checked;
+      const ledCost = includePuck ? 2.80 : 0.0;
+      const rawCost = plaCost + powerCost + ledCost;
+
+      // 10x Rule Recommended Retail Price
+      const recommendedRetail = Math.max(14, Math.round((plaCost + powerCost) * 10 + ledCost));
+
+      // Etsy UK Fees (10.5% + £0.20) + Royal Mail Tracked 48 Small Parcel & Box (£3.75)
+      const etsyFee = recommendedRetail * 0.105 + 0.20;
+      const shippingAndBox = 3.75;
+      const feesAndPost = etsyFee + shippingAndBox;
+
+      const netProfit = recommendedRetail - rawCost - feesAndPost;
+      const marginPct = ((netProfit / recommendedRetail) * 100).toFixed(1);
+      const swefUnits = Math.ceil(500 / recommendedRetail);
+
+      // Populate UI Cards
+      document.getElementById('econ-weight').textContent = `${weightGrams} g`;
+      document.getElementById('econ-time').textContent = `~${printHours.toFixed(1)} hrs on K2 Plus`;
+      document.getElementById('econ-raw-cost').textContent = `£${rawCost.toFixed(2)}`;
+      document.getElementById('econ-raw-breakdown').textContent =
+        `£${plaCost.toFixed(2)} PLA + £${powerCost.toFixed(2)} pwr${includePuck ? ' + £2.80 LED' : ''}`;
+      document.getElementById('econ-retail').textContent = `£${recommendedRetail.toFixed(2)}`;
+      document.getElementById('econ-fees-post').textContent = `£${feesAndPost.toFixed(2)}`;
+      document.getElementById('econ-net-profit').textContent = `£${netProfit.toFixed(2)}`;
+      document.getElementById('econ-margin').textContent = `${marginPct}% Net Margin`;
+      document.getElementById('econ-swef-units').textContent = `${swefUnits} Sales / mo`;
+    }
+
+    // --- BINARY .STL EXPORTER (1:1 MM SCALE, Z-UP ORIENTATION FOR SLICERS) ---
+    function exportBinarySTL() {
+      if (!activeGeometry) return;
+
+      const posAttr = activeGeometry.attributes.position;
+      const numTriangles = posAttr.count / 3;
+
+      // Binary STL format: 80-byte header + 4-byte uint32 triangle count + 50 bytes per triangle
+      const bufferLength = 84 + numTriangles * 50;
+      const arrayBuffer = new ArrayBuffer(bufferLength);
+      const dataView = new DataView(arrayBuffer);
+
+      // Write 80-byte ASCII Header
+      const headerText = `K2 Plus Parametric Studio - ${state.mode.toUpperCase()} (Units: mm, Z-Up)`;
+      for (let i = 0; i < 80; i++) {
+        dataView.setUint8(i, i < headerText.length ? headerText.charCodeAt(i) : 32);
+      }
+
+      // Write Triangle Count (Little-Endian uint32)
+      dataView.setUint32(80, numTriangles, true);
+
+      let offset = 84;
+      const vA = new THREE.Vector3();
+      const vB = new THREE.Vector3();
+      const vC = new THREE.Vector3();
+      const cb = new THREE.Vector3();
+      const ab = new THREE.Vector3();
+
+      for (let i = 0; i < numTriangles; i++) {
+        const idx = i * 3;
+        // Convert from Three.js Y-Up (x, y, z) to Slicer Z-Up (x, -z, y)
+        // This preserves right-handed counter-clockwise outward normals and puts the base flat on Z=0
+        vA.set(posAttr.getX(idx),     -posAttr.getZ(idx),     posAttr.getY(idx));
+        vB.set(posAttr.getX(idx + 1), -posAttr.getZ(idx + 1), posAttr.getY(idx + 1));
+        vC.set(posAttr.getX(idx + 2), -posAttr.getZ(idx + 2), posAttr.getY(idx + 2));
+
+        // Compute Face Normal
+        cb.subVectors(vC, vB);
+        ab.subVectors(vA, vB);
+        cb.cross(ab).normalize();
+
+        // Write Normal (3 float32)
+        dataView.setFloat32(offset, cb.x, true); offset += 4;
+        dataView.setFloat32(offset, cb.y, true); offset += 4;
+        dataView.setFloat32(offset, cb.z, true); offset += 4;
+
+        // Write Vertex 1
+        dataView.setFloat32(offset, vA.x, true); offset += 4;
+        dataView.setFloat32(offset, vA.y, true); offset += 4;
+        dataView.setFloat32(offset, vA.z, true); offset += 4;
+
+        // Write Vertex 2
+        dataView.setFloat32(offset, vB.x, true); offset += 4;
+        dataView.setFloat32(offset, vB.y, true); offset += 4;
+        dataView.setFloat32(offset, vB.z, true); offset += 4;
+
+        // Write Vertex 3
+        dataView.setFloat32(offset, vC.x, true); offset += 4;
+        dataView.setFloat32(offset, vC.y, true); offset += 4;
+        dataView.setFloat32(offset, vC.z, true); offset += 4;
+
+        // Attribute byte count (uint16 = 0)
+        dataView.setUint16(offset, 0, true); offset += 2;
+      }
+
+      // Trigger Browser Download
+      const blob = new Blob([arrayBuffer], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const fileNames = {
+        shade: `k2plus_lamp_shade_${state.shadeHeight}mm.stl`,
+        base: `k2plus_59mm_led_base_${state.baseOuterRad * 2}mm.stl`,
+        organizer: `k2plus_organizer_${state.orgWidth}x${state.orgDepth}x${state.orgHeight}mm.stl`
+      };
+      link.href = url;
+      link.download = fileNames[state.mode];
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      // Show Confirmation Toast
+      const toast = document.getElementById('export-toast');
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 5000);
+    }
+
+    // --- UI INTERACTION HANDLERS ---
+    function switchMode(newMode) {
+      state.mode = newMode;
+      ['shade', 'base', 'organizer'].forEach(m => {
+        const tab = document.getElementById(`tab-${m}`);
+        const panel = document.getElementById(`controls-${m}`);
+        if (m === newMode) {
+          tab.className = 'py-2 px-2 rounded-lg text-xs font-semibold transition flex flex-col items-center gap-1 bg-sky-500/20 text-sky-300 border border-sky-500/40';
+          panel.classList.remove('hidden');
+        } else {
+          tab.className = 'py-2 px-2 rounded-lg text-xs font-semibold transition flex flex-col items-center gap-1 text-slate-400 hover:text-slate-200';
+          panel.classList.add('hidden');
+        }
+      });
+
+      // Automatically check/uncheck the £2.80 LED puck checkbox based on mode
+      document.getElementById('chk-include-puck').checked = (newMode !== 'organizer');
+
+      // Adjust camera target height smoothly
+      controls.target.set(0, newMode === 'shade' ? state.shadeHeight * 0.45 : 35, 0);
+      rebuildModel();
+    }
+
+    function updateParam(key, rawVal) {
+      const val = parseFloat(rawVal);
+      state[key] = val;
+
+      // Format display value
+      const units = {
+        shadeHeight: ' mm', shadeBotRad: ' mm', shadeTopRad: ' mm',
+        shadeBulge: ' mm', shadeWall: ' mm', shadeRibs: '',
+        shadeRibDepth: ' mm', shadeTwist: '°', shadeWaveFreq: '', shadeWaveAmp: ' mm',
+        baseOuterRad: ' mm', baseHeight: ' mm', baseShadeLipRad: ' mm',
+        basePuckDia: ' mm', basePuckDepth: ' mm', baseSlotWidth: ' mm', baseFlutes: '',
+        orgWidth: ' mm', orgDepth: ' mm', orgHeight: ' mm', orgWall: ' mm',
+        orgCols: '', orgRows: '', orgDivHeight: '%', orgScoop: '%'
+      };
+
+      const prefix = (key === 'shadeBulge' && val > 0) ? '+' : '';
+      const decimals = ['shadeWall', 'shadeRibDepth', 'shadeWaveAmp', 'baseShadeLipRad', 'basePuckDia', 'basePuckDepth', 'baseSlotWidth', 'orgWall'].includes(key) ? 1 : 0;
+      const el = document.getElementById(`val-${key}`);
+      if (el) {
+        el.textContent = `${prefix}${val.toFixed(decimals)}${units[key] || ''}`;
+      }
+
+      rebuildModel();
+    }
+
+    function setSliderValue(key, val) {
+      state[key] = val;
+      const inp = document.getElementById(`inp-${key}`);
+      if (inp) inp.value = val;
+      updateParam(key, val);
+    }
+
+    // 1-Click Sync from Lamp Shade to 59mm LED Base
+    function syncBaseToShade() {
+      const shadeInnerRadius = state.shadeBotRad - state.shadeWall;
+      const snugLipRadius = Math.max(35, +(shadeInnerRadius - 0.4).toFixed(1)); // 0.4mm printer tolerance gap
+      const matchingBaseOuter = Math.min(110, Math.round(state.shadeBotRad + 3));
+
+      setSliderValue('baseShadeLipRad', snugLipRadius);
+      setSliderValue('baseOuterRad', matchingBaseOuter);
+      setSliderValue('baseFlutes', Math.min(48, state.shadeRibs));
+      switchMode('base');
+    }
+
+    // Snap Organizer Width & Depth to 42mm Gridfinity Pitch
+    function snapToGridfinity() {
+      const snappedW = Math.max(42, Math.min(336, Math.round(state.orgWidth / 42) * 42));
+      const snappedD = Math.max(42, Math.min(336, Math.round(state.orgDepth / 42) * 42));
+      setSliderValue('orgWidth', snappedW);
+      setSliderValue('orgDepth', snappedD);
+    }
+
+    // Load 1-Click Quick-Start Presets
+    function loadPreset(presetId) {
+      if (presetId === 'nordic_shade') {
+        setSwatch('ivory', '#f5ebd6', 'Matte Warm Ivory', 0.45, 0.05);
+        setSliderValue('shadeHeight', 210);
+        setSliderValue('shadeBotRad', 65);
+        setSliderValue('shadeTopRad', 55);
+        setSliderValue('shadeBulge', 20);
+        setSliderValue('shadeWall', 2.0);
+        setSliderValue('shadeRibs', 28);
+        setSliderValue('shadeRibDepth', 3.5);
+        setSliderValue('shadeTwist', 120);
+        setSliderValue('shadeWaveFreq', 2);
+        setSliderValue('shadeWaveAmp', 3.0);
+        switchMode('shade');
+      } else if (presetId === 'helix_shade') {
+        setSwatch('white', '#f8fafc', 'Matte Pure White', 0.4, 0.05);
+        setSliderValue('shadeHeight', 260);
+        setSliderValue('shadeBotRad', 70);
+        setSliderValue('shadeTopRad', 48);
+        setSliderValue('shadeBulge', 28);
+        setSliderValue('shadeWall', 1.8);
+        setSliderValue('shadeRibs', 18);
+        setSliderValue('shadeRibDepth', 6.0);
+        setSliderValue('shadeTwist', 240);
+        setSliderValue('shadeWaveFreq', 3);
+        setSliderValue('shadeWaveAmp', 4.5);
+        switchMode('shade');
+      } else if (presetId === 'puck_base') {
+        setSwatch('black', '#1e293b', 'Matte Charcoal Black', 0.5, 0.1);
+        setSliderValue('baseOuterRad', 68);
+        setSliderValue('baseHeight', 28);
+        setSliderValue('baseShadeLipRad', 62.6);
+        setSliderValue('basePuckDia', 59.6);
+        setSliderValue('basePuckDepth', 8.5);
+        setSliderValue('baseSlotWidth', 6.0);
+        setSliderValue('baseFlutes', 28);
+        switchMode('base');
+      } else if (presetId === 'desk_caddy') {
+        setSwatch('black', '#1e293b', 'Matte Charcoal Black', 0.5, 0.1);
+        setSliderValue('orgWidth', 168);
+        setSliderValue('orgDepth', 126);
+        setSliderValue('orgHeight', 65);
+        setSliderValue('orgWall', 2.4);
+        setSliderValue('orgCols', 3);
+        setSliderValue('orgRows', 2);
+        setSliderValue('orgDivHeight', 85);
+        setSliderValue('orgScoop', 35);
+        switchMode('organizer');
+      } else if (presetId === 'monitor_tray') {
+        setSwatch('gold', '#eab308', 'Silk Champagne Gold', 0.22, 0.65);
+        setSliderValue('orgWidth', 336);
+        setSliderValue('orgDepth', 84);
+        setSliderValue('orgHeight', 38);
+        setSliderValue('orgWall', 2.4);
+        setSliderValue('orgCols', 5);
+        setSliderValue('orgRows', 1);
+        setSliderValue('orgDivHeight', 80);
+        setSliderValue('orgScoop', 45);
+        switchMode('organizer');
+      }
+    }
+
+    function setSwatch(id, hex, name, roughness, metalness, translucent = false) {
+      state.swatch = { id, color: hex, name, roughness, metalness, translucent };
+      document.getElementById('lbl-swatch-name').textContent = name;
+      rebuildModel();
+    }
+
+    function toggleLedGlow() {
+      state.ledGlowOn = !state.ledGlowOn;
+      const btn = document.getElementById('btn-led-sim');
+      if (state.ledGlowOn) {
+        btn.className = 'py-2 px-3 rounded-xl border border-amber-500/40 bg-amber-500/15 text-amber-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition hover:bg-amber-500/25';
+        btn.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span><span>3000K LED Glow: ON</span>';
+      } else {
+        btn.className = 'py-2 px-3 rounded-xl border border-slate-700 bg-slate-800/80 text-slate-400 text-xs font-semibold flex items-center justify-center gap-1.5 transition hover:bg-slate-700';
+        btn.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-slate-600"></span><span>3000K LED Glow: OFF</span>';
+      }
+      rebuildModel();
+    }
+
+    function toggleAssemblyPreview() {
+      state.showBothLampParts = !state.showBothLampParts;
+      const btn = document.getElementById('btn-assembly');
+      if (state.showBothLampParts) {
+        btn.className = 'py-2 px-3 rounded-xl border border-emerald-500/40 bg-emerald-500/15 text-emerald-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition';
+        btn.textContent = 'Show Both Parts: ON';
+      } else {
+        btn.className = 'py-2 px-3 rounded-xl border border-slate-700 bg-slate-800/80 text-slate-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition hover:bg-slate-700';
+        btn.textContent = 'Show Both Parts: OFF';
+      }
+      rebuildModel();
+    }
+
+    function toggleWireframe() {
+      state.wireframe = !state.wireframe;
+      const btn = document.getElementById('btn-wireframe');
+      btn.className = state.wireframe
+        ? 'px-2.5 py-1.5 rounded-lg text-xs font-medium bg-sky-500/20 text-sky-300 border border-sky-500/30 transition'
+        : 'px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800 transition';
+      rebuildModel();
+    }
+
+    function toggleAutoSpin() {
+      state.autoSpin = !state.autoSpin;
+      const btn = document.getElementById('btn-spin');
+      btn.className = state.autoSpin
+        ? 'px-2.5 py-1.5 rounded-lg text-xs font-medium bg-sky-500/20 text-sky-300 border border-sky-500/30 transition'
+        : 'px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800 transition';
+    }
+
+    function resetCameraView() {
+      camera.position.set(270, 230, 310);
+      controls.target.set(0, state.mode === 'shade' ? state.shadeHeight * 0.45 : 40, 0);
+      controls.update();
+    }
+
+    function onWindowResize() {
+      const container = document.getElementById('viewport-container');
+      if (!container || !renderer) return;
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
+    }
+
+    // --- ANIMATION LOOP ---
+    function animate() {
+      requestAnimationFrame(animate);
+      if (state.autoSpin && mainMesh) {
+        mainMesh.rotation.y += 0.0035;
+        if (secondaryMesh) secondaryMesh.rotation.y = mainMesh.rotation.y;
+        if (wireframeMesh) wireframeMesh.rotation.y = mainMesh.rotation.y;
+      }
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    window.onload = function () {
+      initThree();
+    };
+  </script>
+</body>
+</html>
